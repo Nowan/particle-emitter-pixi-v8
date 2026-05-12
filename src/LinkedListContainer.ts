@@ -1,4 +1,4 @@
-import { Container, Renderer, MaskData, Rectangle } from 'pixi.js';
+import { Container, Bounds, type UpdateTransformOptions } from 'pixi.js';
 
 type DisplayObject = Container;
 
@@ -62,9 +62,6 @@ export class LinkedListContainer extends Container
             child.parent = this;
             this.sortDirty = true;
 
-            // ensure child transform will be recalculated
-            child.transform._parentID = -1;
-
             // add to list if we have a list
             if (this._lastChild)
             {
@@ -81,11 +78,7 @@ export class LinkedListContainer extends Container
             // update child count
             ++this._childCount;
 
-            // ensure bounds will be recalculated
-            this._boundsID++;
-
-            // TODO - lets either do all callbacks or all events.. not both!
-            this.onChildrenChange();
+            // emit events
             this.emit('childAdded', child, this, this._childCount);
             child.emit('added', this);
         }
@@ -107,9 +100,6 @@ export class LinkedListContainer extends Container
 
         child.parent = this;
         this.sortDirty = true;
-
-        // ensure child transform will be recalculated
-        child.transform._parentID = -1;
 
         const c = (child as any) as LinkedListChild;
 
@@ -154,11 +144,7 @@ export class LinkedListContainer extends Container
         // update child count
         ++this._childCount;
 
-        // ensure bounds will be recalculated
-        this._boundsID++;
-
-        // TODO - lets either do all callbacks or all events.. not both!
-        this.onChildrenChange(index);
+        // emit events
         child.emit('added', this);
         this.emit('childAdded', child, this, index);
 
@@ -187,9 +173,6 @@ export class LinkedListContainer extends Container
         child.parent = this;
         this.sortDirty = true;
 
-        // ensure child transform will be recalculated
-        child.transform._parentID = -1;
-
         // insert before the target that we were given
         (relative as LinkedListChild).prevChild.nextChild = (child as any as LinkedListChild);
         (child as any as LinkedListChild).prevChild = (relative as LinkedListChild).prevChild;
@@ -203,11 +186,7 @@ export class LinkedListContainer extends Container
         // update child count
         ++this._childCount;
 
-        // ensure bounds will be recalculated
-        this._boundsID++;
-
-        // TODO - lets either do all callbacks or all events.. not both!
-        this.onChildrenChange();
+        // emit events
         this.emit('childAdded', child, this, this._childCount);
         child.emit('added', this);
 
@@ -236,9 +215,6 @@ export class LinkedListContainer extends Container
         child.parent = this;
         this.sortDirty = true;
 
-        // ensure child transform will be recalculated
-        child.transform._parentID = -1;
-
         // insert after the target that we were given
         (relative as LinkedListChild).nextChild.prevChild = (child as any as LinkedListChild);
         (child as any as LinkedListChild).nextChild = (relative as LinkedListChild).nextChild;
@@ -252,11 +228,7 @@ export class LinkedListContainer extends Container
         // update child count
         ++this._childCount;
 
-        // ensure bounds will be recalculated
-        this._boundsID++;
-
-        // TODO - lets either do all callbacks or all events.. not both!
-        this.onChildrenChange();
+        // emit events
         this.emit('childAdded', child, this, this._childCount);
         child.emit('added', this);
 
@@ -293,8 +265,6 @@ export class LinkedListContainer extends Container
         {
             this._lastChild = child as LinkedListChild;
         }
-
-        this.onChildrenChange();
     }
 
     public getChildIndex(child: DisplayObject): number
@@ -382,8 +352,6 @@ export class LinkedListContainer extends Container
             (child as LinkedListChild).nextChild = target;
             target.prevChild = (child as LinkedListChild);
         }
-
-        this.onChildrenChange(index);
     }
 
     public removeChild<T extends DisplayObject[]>(...children: T): T[0]
@@ -405,8 +373,6 @@ export class LinkedListContainer extends Container
             if (child.parent !== this) return null;
 
             child.parent = null;
-            // ensure child transform will be recalculated
-            child.transform._parentID = -1;
 
             // swap out child references
             if (child.nextChild)
@@ -432,11 +398,7 @@ export class LinkedListContainer extends Container
             // update child count
             --this._childCount;
 
-            // ensure bounds will be recalculated
-            this._boundsID++;
-
-            // TODO - lets either do all callbacks or all events.. not both!
-            this.onChildrenChange();
+            // emit events
             child.emit('removed', this);
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
@@ -446,7 +408,7 @@ export class LinkedListContainer extends Container
         return children[0];
     }
 
-    public getChildAt(index: number): DisplayObject
+    public getChildAt<T extends DisplayObject = DisplayObject>(index: number): T
     {
         if (index < 0 || index >= this._childCount)
         {
@@ -455,12 +417,12 @@ export class LinkedListContainer extends Container
 
         if (index === 0)
         {
-            return this._firstChild;
+            return this._firstChild as unknown as T;
         }
         // add at end (front)
         else if (index === this._childCount)
         {
-            return this._lastChild;
+            return this._lastChild as unknown as T;
         }
         // otherwise we have to start counting through the children to find the right one
         // - SLOW, only provided to fully support the possibility of use
@@ -473,16 +435,14 @@ export class LinkedListContainer extends Container
             ++i;
         }
 
-        return target;
+        return target as unknown as T;
     }
 
-    public removeChildAt(index: number): DisplayObject
+    public removeChildAt<T extends DisplayObject = DisplayObject>(index: number): T
     {
         const child = this.getChildAt(index) as LinkedListChild;
 
-        // ensure child transform will be recalculated..
         child.parent = null;
-        child.transform._parentID = -1;
         // swap out child references
         if (child.nextChild)
         {
@@ -507,15 +467,11 @@ export class LinkedListContainer extends Container
         // update child count
         --this._childCount;
 
-        // ensure bounds will be recalculated
-        this._boundsID++;
-
-        // TODO - lets either do all callbacks or all events.. not both!
-        this.onChildrenChange(index);
+        // emit events
         child.emit('removed', this);
         this.emit('childRemoved', child, this, index);
 
-        return child;
+        return child as unknown as T;
     }
 
     public removeChildren(beginIndex = 0, endIndex = this._childCount): DisplayObject[]
@@ -576,17 +532,9 @@ export class LinkedListContainer extends Container
             {
                 // clear parenting and sibling references for all removed children
                 removed[i].parent = null;
-                if (removed[i].transform)
-                {
-                    removed[i].transform._parentID = -1;
-                }
                 removed[i].nextChild = null;
                 removed[i].prevChild = null;
             }
-
-            this._boundsID++;
-
-            this.onChildrenChange(beginIndex);
 
             for (let i = 0; i < removed.length; ++i)
             {
@@ -606,17 +554,14 @@ export class LinkedListContainer extends Container
 
     /**
      * Updates the transform on all children of this container for rendering.
-     * Copied from and overrides PixiJS v5 method (v4 method is identical)
+     * Updated for PixiJS v8
      */
-    updateTransform(): void
+    public override updateTransform(opts?: Partial<UpdateTransformOptions>): this
     {
-        this._boundsID++;
+        // Call parent implementation
+        super.updateTransform(opts);
 
-        this.transform.updateTransform(this.parent.transform);
-
-        // TODO: check render flags, how to process stuff here
-        this.worldAlpha = this.alpha * this.parent.worldAlpha;
-
+        // Update children using linked list
         let child;
         let next;
 
@@ -626,214 +571,25 @@ export class LinkedListContainer extends Container
 
             if (child.visible)
             {
-                child.updateTransform();
+                child.updateTransform(opts);
             }
         }
+
+        return this;
     }
 
     /**
-     * Recalculates the bounds of the container.
-     * Copied from and overrides PixiJS v5 method (v4 method is identical)
+     * Retrieves the local bounds of the displayObject as a rectangle object. Updated for PixiJS v8
      */
-    calculateBounds(): void
+    public override getLocalBounds(): Bounds
     {
-        this._bounds.clear();
-
-        this._calculateBounds();
-
-        let child;
-        let next;
-
-        for (child = this._firstChild; child; child = next)
-        {
-            next = child.nextChild;
-
-            if (!child.visible || !child.renderable)
-            {
-                continue;
-            }
-
-            child.calculateBounds();
-
-            // TODO: filter+mask, need to mask both somehow
-            if (child._mask)
-            {
-                const maskObject = ((child._mask as MaskData).maskObject || child._mask) as Container;
-
-                maskObject.calculateBounds();
-                this._bounds.addBoundsMask(child._bounds, maskObject._bounds);
-            }
-            else if (child.filterArea)
-            {
-                this._bounds.addBoundsArea(child._bounds, child.filterArea);
-            }
-            else
-            {
-                this._bounds.addBounds(child._bounds);
-            }
-        }
-
-        this._bounds.updateID = this._boundsID;
+        // Use parent implementation - v8 handles bounds differently
+        return super.getLocalBounds();
     }
 
     /**
-     * Retrieves the local bounds of the displayObject as a rectangle object. Copied from and overrides PixiJS v5 method
+     * Note: In v8, rendering is handled automatically by the scene graph.
+     * The linked list structure is maintained for efficient child management,
+     * but rendering follows the standard Container pattern.
      */
-    public getLocalBounds(rect?: Rectangle, skipChildrenUpdate = false): Rectangle
-    {
-        // skip Container's getLocalBounds, go directly to DisplayObject
-        const result = DisplayObject.prototype.getLocalBounds.call(this, rect);
-
-        if (!skipChildrenUpdate)
-        {
-            let child;
-            let next;
-
-            for (child = this._firstChild; child; child = next)
-            {
-                next = child.nextChild;
-
-                if (child.visible)
-                {
-                    child.updateTransform();
-                }
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Renders the object using the WebGL renderer. Copied from and overrides PixiJS v5 method
-     */
-    render(renderer: Renderer): void
-    {
-        // if the object is not visible or the alpha is 0 then no need to render this element
-        if (!this.visible || this.worldAlpha <= 0 || !this.renderable)
-        {
-            return;
-        }
-
-        // do a quick check to see if this element has a mask or a filter.
-        if (this._mask || (this.filters && this.filters.length))
-        {
-            this.renderAdvanced(renderer);
-        }
-        else
-        {
-            this._render(renderer);
-
-            let child;
-            let next;
-
-            // simple render children!
-            for (child = this._firstChild; child; child = next)
-            {
-                next = child.nextChild;
-                child.render(renderer);
-            }
-        }
-    }
-
-    /**
-     * Render the object using the WebGL renderer and advanced features. Copied from and overrides PixiJS v5 method
-     */
-    protected renderAdvanced(renderer: Renderer): void
-    {
-        renderer.batch.flush();
-
-        const filters = this.filters;
-        const mask = this._mask;
-
-        // _enabledFilters note: As of development, _enabledFilters is not documented in pixi.js
-        // types but is in code of current release (5.2.4).
-
-        // push filter first as we need to ensure the stencil buffer is correct for any masking
-        if (filters)
-        {
-            if (!this._enabledFilters)
-            {
-                this._enabledFilters = [];
-            }
-
-            this._enabledFilters.length = 0;
-
-            for (let i = 0; i < filters.length; i++)
-            {
-                if (filters[i].enabled)
-                {
-                    this._enabledFilters.push(filters[i]);
-                }
-            }
-
-            if (this._enabledFilters.length)
-            {
-                renderer.filter.push(this, this._enabledFilters);
-            }
-        }
-
-        if (mask)
-        {
-            renderer.mask.push(this, this._mask);
-        }
-
-        // add this object to the batch, only rendered if it has a texture.
-        this._render(renderer);
-
-        let child;
-        let next;
-
-        // now loop through the children and make sure they get rendered
-        for (child = this._firstChild; child; child = next)
-        {
-            next = child.nextChild;
-            child.render(renderer);
-        }
-
-        renderer.batch.flush();
-
-        if (mask)
-        {
-            renderer.mask.pop(this);
-        }
-
-        if (filters && this._enabledFilters && this._enabledFilters.length)
-        {
-            renderer.filter.pop();
-        }
-    }
-
-    /**
-     * Renders the object using the Canvas renderer. Copied from and overrides PixiJS Canvas mixin in V5 and V6.
-     */
-    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-    renderCanvas(renderer: any): void
-    {
-        // if not visible or the alpha is 0 then no need to render this
-        if (!this.visible || this.worldAlpha <= 0 || !this.renderable)
-        {
-            return;
-        }
-
-        if (this._mask)
-        {
-            renderer.maskManager.pushMask(this._mask);
-        }
-
-        (this as any)._renderCanvas(renderer);
-
-        let child;
-        let next;
-
-        for (child = this._firstChild; child; child = next)
-        {
-            next = child.nextChild;
-            (child as any).renderCanvas(renderer);
-        }
-
-        if (this._mask)
-        {
-            renderer.maskManager.popMask(renderer);
-        }
-    }
 }
