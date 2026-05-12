@@ -1,0 +1,23 @@
+{
+  "name": "pixi-v8-module",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "test": "tsc && electron .",
+    "build": "tsc && vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@pixi/particle-emitter": "file:../..",
+    "pixi.js": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "electron": "^22.3.24",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  },
+  "private": true
+}

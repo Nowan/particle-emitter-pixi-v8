@@ -1,4 +1,4 @@
-import { Point } from '@pixi/math';
+import { Point } from 'pixi.js';
 import { Particle } from '../Particle';
 import { rotatePoint, verbose } from '../ParticleUtils';
 import { PropertyList } from '../PropertyList';

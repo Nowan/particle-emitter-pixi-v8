@@ -1,9 +1,7 @@
 import { generateEase, rotatePoint, SimpleEase } from './ParticleUtils';
 import { Particle } from './Particle';
 import { EmitterConfigV3 } from './EmitterConfig';
-import { Container } from '@pixi/display';
-import { Point } from '@pixi/math';
-import { Ticker } from '@pixi/ticker';
+import { Container, Point, Ticker } from 'pixi.js';
 import { BehaviorOrder, IEmitterBehavior, IEmitterBehaviorClass } from './behaviors/Behaviors';
 // get the shared ticker, only supports V5 and V6 with individual packages
 /**
@@ -16,6 +14,12 @@ const ticker = Ticker.shared;
  * and rotation.
  */
 const PositionParticle = Symbol('Position particle per emitter position');
+
+type EmitterParent = Container | {
+    addParticle: (particle: Particle) => unknown;
+    removeParticle: (particle: Particle) => unknown;
+    addParticleAt?: (particle: Particle, index: number) => unknown;
+};
 
 /**
  * A particle emitter.
@@ -121,7 +125,7 @@ export class Emitter
     /**
      * The container to add particles to.
      */
-    protected _parent: Container;
+    protected _parent: EmitterParent;
     /**
      * If particles should be added at the back of the display list instead of the front.
      */
@@ -191,7 +195,7 @@ export class Emitter
      *                          true, the Emitter will automatically call
      *                          update via the PIXI shared ticker.
      */
-    constructor(particleParent: Container, config: EmitterConfigV3)
+    constructor(particleParent: EmitterParent, config: EmitterConfigV3)
     {
         this.initBehaviors = [];
         this.updateBehaviors = [];
@@ -264,11 +268,53 @@ export class Emitter
     /**
     * The container to add particles to. Settings this will dump any active particles.
     */
-    public get parent(): Container { return this._parent; }
-    public set parent(value: Container)
+    public get parent(): EmitterParent { return this._parent; }
+    public set parent(value: EmitterParent)
     {
         this.cleanup();
         this._parent = value;
+    }
+
+    protected addParticleToParent(particle: Particle): void
+    {
+        const parent = this._parent as any;
+
+        if (typeof parent.addParticle === 'function')
+        {
+            if (this.addAtBack && typeof parent.addParticleAt === 'function')
+            {
+                parent.addParticleAt(particle, 0);
+            }
+            else
+            {
+                parent.addParticle(particle);
+            }
+
+            return;
+        }
+
+        if (this.addAtBack)
+        {
+            parent.addChildAt(particle, 0);
+        }
+        else
+        {
+            parent.addChild(particle);
+        }
+    }
+
+    protected removeParticleFromParent(particle: Particle): void
+    {
+        const parent = this._parent as any;
+
+        if (typeof parent?.removeParticle === 'function')
+        {
+            parent.removeParticle(particle);
+        }
+        else if (particle.parent)
+        {
+            particle.parent.removeChild(particle);
+        }
     }
 
     /**
@@ -441,10 +487,7 @@ export class Emitter
         particle.next = this._poolFirst;
         this._poolFirst = particle;
         // remove child from display, or make it invisible if it is in a ParticleContainer
-        if (particle.parent)
-        {
-            particle.parent.removeChild(particle);
-        }
+        this.removeParticleFromParent(particle);
         // decrease count
         --this.particleCount;
     }
@@ -558,11 +601,15 @@ export class Emitter
      * Updates all particles spawned by this emitter and emits new ones.
      * @param delta Time elapsed since the previous frame, in __seconds__.
      */
-    public update(delta: number): void
+    public update(delta: number | Ticker): void
     {
         if (this._autoUpdate)
         {
             delta = ticker.elapsedMS * 0.001;
+        }
+        else if (typeof delta !== 'number')
+        {
+            delta = delta.deltaMS * 0.001;
         }
 
         // if we don't have a parent to add particles to, then don't do anything.
@@ -723,14 +770,7 @@ export class Emitter
                     // initialize particle
                     p.init(lifetime);
                     // add the particle to the display list
-                    if (this.addAtBack)
-                    {
-                        this._parent.addChildAt(p, 0);
-                    }
-                    else
-                    {
-                        this._parent.addChild(p);
-                    }
+                    this.addParticleToParent(p);
                     // add particles to list of ones in this wave
                     if (waveFirst)
                     {
@@ -908,14 +948,7 @@ export class Emitter
             // initialize particle
             p.init(lifetime);
             // add the particle to the display list
-            if (this.addAtBack)
-            {
-                this._parent.addChildAt(p, 0);
-            }
-            else
-            {
-                this._parent.addChild(p);
-            }
+            this.addParticleToParent(p);
             // add particles to list of ones in this wave
             if (waveFirst)
             {

@@ -1,6 +1,6 @@
 import { Emitter } from './Emitter';
 import { LinkedListChild } from './LinkedListContainer';
-import { Sprite } from '@pixi/sprite';
+import { Sprite } from 'pixi.js';
 
 /**
  * An individual particle image. You shouldn't have to deal with these.
@@ -44,6 +44,80 @@ export class Particle extends Sprite implements LinkedListChild
      * Static per-particle configuration for behaviors to use. Is not cleared when recycling.
      */
     public config: {[key: string]: any};
+
+    // IParticle-compatible accessors for v8 ParticleContainer compatibility
+    public get x(): number
+    {
+        return this.position.x;
+    }
+
+    public set x(value: number)
+    {
+        this.position.x = value;
+    }
+
+    public get y(): number
+    {
+        return this.position.y;
+    }
+
+    public set y(value: number)
+    {
+        this.position.y = value;
+    }
+
+    public get scaleX(): number
+    {
+        return this.scale.x;
+    }
+
+    public set scaleX(value: number)
+    {
+        this.scale.x = value;
+    }
+
+    public get scaleY(): number
+    {
+        return this.scale.y;
+    }
+
+    public set scaleY(value: number)
+    {
+        this.scale.y = value;
+    }
+
+    public get anchorX(): number
+    {
+        return this.anchor.x;
+    }
+
+    public set anchorX(value: number)
+    {
+        this.anchor.x = value;
+    }
+
+    public get anchorY(): number
+    {
+        return this.anchor.y;
+    }
+
+    public set anchorY(value: number)
+    {
+        this.anchor.y = value;
+    }
+
+    public get color(): number
+    {
+        const alpha = Math.max(0, Math.min(255, Math.round(this.alpha * 255)));
+
+        return (alpha << 24) | this.tint;
+    }
+
+    public set color(value: number)
+    {
+        this.tint = value & 0xFFFFFF;
+        this.alpha = ((value >>> 24) & 0xFF) / 255;
+    }
 
     /**
      * @param emitter The emitter that controls this particle.

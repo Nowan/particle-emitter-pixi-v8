@@ -1,4 +1,4 @@
-import { Texture } from '@pixi/core';
+import { Texture } from 'pixi.js';
 import { Particle } from '../Particle';
 import { IEmitterBehavior, BehaviorOrder } from './Behaviors';
 import { GetTextureFromString } from '../ParticleUtils';

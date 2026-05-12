@@ -1,6 +1,6 @@
-import { Container, DisplayObject } from '@pixi/display';
-import { Renderer, MaskData } from '@pixi/core';
-import { Rectangle } from '@pixi/math';
+import { Container, Renderer, MaskData, Rectangle } from 'pixi.js';
+
+type DisplayObject = Container;
 
 /** Interface for a child of a LinkedListContainer (has the prev/next properties added) */
 export interface LinkedListChild extends DisplayObject

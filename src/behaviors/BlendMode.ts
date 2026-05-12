@@ -40,7 +40,8 @@ export class BlendModeBehavior implements IEmitterBehavior
 
         while (next)
         {
-            next.blendMode = getBlendMode(this.value);
+            // v8 uses string blend modes
+            next.blendMode = getBlendMode(this.value) as any;
             next = next.next;
         }
     }

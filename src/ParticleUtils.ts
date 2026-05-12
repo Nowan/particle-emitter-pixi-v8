@@ -1,6 +1,4 @@
-import { Texture } from '@pixi/core';
-import { IPointData } from '@pixi/math';
-import { BLEND_MODES } from '@pixi/constants';
+import { Texture, PointData } from 'pixi.js';
 import { PropertyNode, ValueStep } from './PropertyNode';
 
 /**
@@ -44,7 +42,7 @@ export const DEG_TO_RADS = Math.PI / 180;
  * @param angle The angle to rotate by in radians
  * @param p The point to rotate around 0,0.
  */
-export function rotatePoint(angle: number, p: IPointData): void
+export function rotatePoint(angle: number, p: PointData): void
 {
     if (!angle) return;
 
@@ -74,7 +72,7 @@ export function combineRGBComponents(r: number, g: number, b: number/* , a*/): n
  * @param point The point to measure length
  * @return The length of this point.
  */
-export function length(point: IPointData): number
+export function length(point: PointData): number
 {
     return Math.sqrt((point.x * point.x) + (point.y * point.y));
 }
@@ -83,7 +81,7 @@ export function length(point: IPointData): number
  * Reduces the point to a length of 1.
  * @param point The point to normalize
  */
-export function normalize(point: IPointData): void
+export function normalize(point: PointData): void
 {
     let oneOverLen = 1 / length(point);
 
@@ -103,7 +101,7 @@ export function normalize(point: IPointData): void
  * @param point The point to scaleBy
  * @param value The value to scale by.
  */
-export function scaleBy(point: IPointData, value: number): void
+export function scaleBy(point: PointData, value: number): void
 {
     point.x *= value;
     point.y *= value;
@@ -185,12 +183,12 @@ export function generateEase(segments: EaseSegment[]): SimpleEase
  * @param name The name of the blend mode to get.
  * @return The blend mode as specified in the PIXI.BLEND_MODES enumeration.
  */
-export function getBlendMode(name: string): number
+export function getBlendMode(name: string): string
 {
-    if (!name) return BLEND_MODES.NORMAL;
-    name = name.toUpperCase().replace(/ /g, '_');
+    if (!name) return 'normal';
 
-    return (BLEND_MODES as any)[name] || BLEND_MODES.NORMAL;
+    // v8 uses string blend modes
+    return name.toLowerCase().replace(/_/g, '-');
 }
 
 /**

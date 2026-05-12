@@ -4,11 +4,16 @@
 
 A particle system library for the [PixiJS](https://github.com/pixijs/pixijs) library. Also, we created an [interactive particle editor](https://userland.pixijs.io/particle-emitter-editor/) to design and preview custom particle emitters which utilitze PixiJS Particle Emitter. Note that the editor was built for an older version of the library - to use its output you'll have to use the [`upgradeConfig()`](https://userland.pixijs.io/particle-emitter/docs/modules.html#upgradeConfig) function.
 
+## Breaking changes in v6 from v5
+* **PixiJS v8 Support**: This version requires PixiJS v8.x. The package structure has changed from individual `@pixi/*` packages to the unified `pixi.js` package.
+* **Particle Parent**: The emitter now supports both regular `Container` instances and the new v8 `ParticleContainer` for improved performance. When using `ParticleContainer`, particles are managed via `addParticle()`/`removeParticle()` methods instead of the standard display list.
+* **Ticker API**: The `update()` method now accepts either a delta time (number) or a `Ticker` instance, compatible with PixiJS v8's ticker callback signature.
+
 ## Breaking changes in v5 from v4
 * Project has been renamed from `pixi-particles` to `@pixi/particle-emitter`
 * On `Emitter`, configuration format has drastically changed. Use [`upgradeConfig()`](https://userland.pixijs.io/particle-emitter/docs/modules.html#upgradeConfig) to convert old configuration objects automatically.
 * `PathParticle` and `AnimatedParticle` no longer exist, use the new behaviors instead.
-* Dropped support for PixiJS v4. Please use v6 - while v5 may work, Typescript definitions won't work and will cause you a headache.
+* Dropped support for PixiJS v4. Please use v8 - legacy v6/v7 may work but are no longer supported.
 * The library now outputs ES6 code - if you need it in ES5 code, you'll need to make sure your build process transpiles it.
 
 ## Sample Usage
@@ -26,6 +31,9 @@ var emitter = new PIXI.particles.Emitter(
     // The PIXI.Container to put the emitter in
     // if using blend modes, it's important to put this
     // on top of a bitmap, and not use the root stage Container
+    // 
+    // For v8, you can also use PIXI.ParticleContainer for significantly
+    // better performance with large particle counts
     container,
     // Emitter configuration, edit this to change the look
     // of the emitter
